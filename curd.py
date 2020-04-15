@@ -53,7 +53,7 @@ def insert_tweets(connection, file_name):
         reader = csv.DictReader(csv_file, fieldnames=['source', 'text', 'created_at', 'retweet_count', 'favorite_count', 'is_retweet', 'id_str'])
         cursor = connection.cursor()
         for row in reader:
-            cursor.execute("INSERT INTO Tweet(TweetId, Post, Stamp, NumFavorites, NumRetweets, IsRetweet, Source, HandleId) VALUES (?, ?, ?, ?, ?, ?, ?, ?);",
+            cursor.execute("INSERT INTO Tweet(TweetId, Post, Stamp, NumFavorites, NumRetweets, IsRetweet, Source, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?, ?);",
                            row['id_str'], row['text'], row['created_at'], row['favorite_count'], row['retweet_count'], 1 if row['is_retweet'] == 'true' else 0, row['source'], '@realDonaldTrump')
 
 
@@ -66,7 +66,7 @@ def insert_query(connection):
     min_retweets = input('')
 
     cursor = connection.cursor()
-    cursor.execute("INSERT INTO Query (Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES (?, ?, ?, ?, ?);",
+    cursor.execute("INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?, ?, ?, ?, ?);",
                    topic, start_time, end_time, min_favorites, min_retweets)
 
     sample = cursor.fetchall("""    SELECT TweetId, Post FROM Tweet, Query
@@ -88,7 +88,7 @@ def insert_query(connection):
     negative = 0
 
     for tweet in sample:
-        cursor.execute("INSERT INTO Sampled (QueryId, TweetId) VALUES (?, ?);", query_id, tweet[0])
+        cursor.execute("INSERT INTO Sampled(QueryId, TweetId) VALUES(?, ?);", query_id, tweet[0])
 
         score = afinn(tweet[1])
         sentiment += score

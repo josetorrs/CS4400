@@ -1,5 +1,3 @@
--- CURRENT
-
 CREATE TABLE IF NOT EXISTS Handle (
     HandleId TEXT NOT NULL PRIMARY KEY
 );
@@ -7,12 +5,12 @@ CREATE TABLE IF NOT EXISTS Handle (
 CREATE TABLE IF NOT EXISTS Tweet (
     TweetId INTEGER NOT NULL PRIMARY KEY,
     Post TEXT NOT NULL,
-    Stamp DATETIME,
-    NumFavorites INTEGER CHECK (NumFavorites >= 0),
-    NumRetweets INTEGER CHECK (NumRetweets >= 0),
-    IsRetweet INTEGER CHECK (IsRetweet IN (0, 1)),
-    Source TEXT,
-    HandleId TEXT,
+    Stamp DATETIME NOT NULL,
+    NumFavorites INTEGER NOT NULL CHECK (NumFavorites >= 0),
+    NumRetweets INTEGER NOT NULL CHECK (NumRetweets >= 0),
+    IsRetweet INTEGER NOT NULL CHECK (IsRetweet IN (0, 1)),
+    Source TEXT NOT NULL,
+    HandleId TEXT NOT NULL,
     FOREIGN KEY (HandleId) REFERENCES Handle(HandleId)
 );
 
@@ -41,36 +39,12 @@ INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?
 
 SELECT TweetId, Post FROM Tweet, Query
 WHERE (QueryId = last_insert_rowid())
-AND (Post LIKE '%' + Topic + '%')
-AND (Stamp >= StartTime)
-AND (Stamp <= EndTime)
-AND (NumFavorites >= MinFavorites)
-AND (NumRetweets >= MinRetweets);
+AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
+AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
+AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
+AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
+AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL));
 
 SELECT last_insert_rowid();
 
 INSERT INTO Sampled(QueryId, TweetId) VALUES(?, ?);
-
--- OLD
-
-INSERT INTO Sampled(QueryId, TweetId) VALUES((
-    SELECT last_insert_rowid(), TweetId FROM Tweet
-    WHERE (Text LIKE '%' + ? + '%')
-    AND (Stamp >= ?)
-    AND (Stamp <= ?)
-    AND (NumFavorites >= ?)
-    AND (NumRetweets >= ?)
-));
-
-SELECT Post FROM Tweet
-WHERE TweetId IN (
-    SELECT TweetId FROM Sampled WHERE QueryId = ?
-);
-
-SELECT TweetId, Post FROM Tweet
-WHERE (Text LIKE '%' + ? + '%')
-AND (Stamp >= ?)
-AND (Stamp <= ?)
-AND (NumFavorites >= ?)
-AND (NumRetweets >= ?));
-

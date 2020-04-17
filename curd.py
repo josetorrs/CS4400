@@ -13,12 +13,12 @@ def create_tables(connection):
     cursor.execute("""  CREATE TABLE IF NOT EXISTS Tweet (
                             TweetId INTEGER NOT NULL PRIMARY KEY,
                             Post TEXT NOT NULL,
-                            Stamp DATETIME,
-                            NumFavorites INTEGER CHECK (NumFavorites >= 0),
-                            NumRetweets INTEGER CHECK (NumRetweets >= 0),
-                            IsRetweet INTEGER CHECK (IsRetweet IN (0, 1)),
-                            Source TEXT,
-                            HandleId TEXT,
+                            Stamp DATETIME NOT NULL,
+                            NumFavorites INTEGER NOT NULL CHECK (NumFavorites >= 0),
+                            NumRetweets INTEGER NOT NULL CHECK (NumRetweets >= 0),
+                            IsRetweet INTEGER NOT NULL CHECK (IsRetweet IN (0, 1)),
+                            Source TEXT NOT NULL,
+                            HandleId TEXT NOT NULL,
                             FOREIGN KEY (HandleId) REFERENCES Handle(HandleId)
                         );
                     """)
@@ -44,7 +44,7 @@ def create_tables(connection):
 def insert_handle(connection, handle):
 
     cursor = connection.cursor()
-    cursor.execute("INSERT INTO Handle(HandleId) VALUES(?);", handle)
+    cursor.execute("INSERT INTO Handle(HandleId) VALUES(?);", [handle])
 
 
 def insert_tweets(connection, file_name):
@@ -54,41 +54,61 @@ def insert_tweets(connection, file_name):
         cursor = connection.cursor()
         for row in reader:
             cursor.execute("INSERT INTO Tweet(TweetId, Post, Stamp, NumFavorites, NumRetweets, IsRetweet, Source, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?, ?);",
-                           row['id_str'], row['text'], row['created_at'], row['favorite_count'], row['retweet_count'], 1 if row['is_retweet'] == 'true' else 0, row['source'], '@realDonaldTrump')
+                            [row['id_str'], row['text'], row['created_at'], row['favorite_count'], row['retweet_count'], 1 if row['is_retweet'] == 'true' else 0, row['source'], '@realDonaldTrump'])
 
 
 def insert_query(connection):
-
-    topic = input('')
-    start_time = input('')
-    end_time = input('')
-    min_favorites = input('')
-    min_retweets = input('')
+    
+    print('=' * 31)
+    print('time format MM-DD-YYYY HH:MM:SS')
+    print('=' * 31)
+    
+    topic = input('topic\t\t\t')
+    start_time = input('start time\t\t')
+    end_time = input('end time\t\t')
+    min_favorites = input('min favorites\t')
+    min_retweets = input('min retweets\t')
+    
+    start_time = None if start_time == '' else start_time
+    end_time = None if end_time == '' else end_time
+    min_favorites = None if min_favorites == '' else min_favorites
+    min_retweets = None if min_retweets == '' else min_retweets
+    
+    print('=' * 31)
+    print('topic\t\t{}'.format(topic))
+    print('start time\t{}'.format(start_time))
+    print('end time\t{}'.format(end_time))
+    print('min favorites\t{}'.format(min_favorites))
+    print('min retweets\t{}'.format(min_retweets))
+    print('=' * 31)
 
     cursor = connection.cursor()
     cursor.execute("INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?, ?, ?, ?, ?);",
-                   topic, start_time, end_time, min_favorites, min_retweets)
+                    [topic, start_time, end_time, min_favorites, min_retweets])
 
-    sample = cursor.fetchall("""    SELECT TweetId, Post FROM Tweet, Query
-                                    WHERE (QueryId = last_insert_rowid())
-                                    AND (Post LIKE '%' + Topic + '%')
-                                    AND (Stamp >= StartTime)
-                                    AND (Stamp <= EndTime)
-                                    AND (NumFavorites >= MinFavorites)
-                                    AND (NumRetweets >= MinRetweets);
-                            """)
-
-    afinn = Afinn()
-    query_id = cursor.fetchone("SELECT last_insert_rowid();")
-
+    cursor.execute("""  SELECT TweetId, Post FROM Tweet, Query
+                        WHERE (QueryId = last_insert_rowid())
+                        AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
+                        AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
+                        AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
+                        AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
+                        AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL));
+                    """)
+    sample = cursor.fetchall()
+    
+    cursor.execute("SELECT last_insert_rowid();")
+    query_id = cursor.fetchone()
+    
     size = len(sample)
     sentiment = 0
     positive = 0
     neutral = 0
     negative = 0
+    
+    afinn = Afinn()
 
     for tweet in sample:
-        cursor.execute("INSERT INTO Sampled(QueryId, TweetId) VALUES(?, ?);", query_id, tweet[0])
+        cursor.execute("INSERT INTO Sampled(QueryId, TweetId) VALUES(?, ?);", [query_id[0], tweet[0]])
 
         score = afinn(tweet[1])
         sentiment += score
@@ -100,20 +120,21 @@ def insert_query(connection):
         else:
             neutral += 1
 
-    sentiment /= size
-
-    print(size)
-    print(sentiment)
-    print(positive)
-    print(neutral)
-    print(negative)
+    sentiment = None if size == 0 else sentiment / size
+    
+    print('sample size\t{}'.format(size))
+    print('sentiment\t{}'.format(sentiment))
+    print('positive\t{}'.format(positive))
+    print('neutral\t\t{}'.format(neutral))
+    print('negative\t{}'.format(negative))
+    print('=' * 31)
 
 
 def main():
     with sqlite3.connect('project.db') as connection:
-        create_tables(connection)
-        insert_handle(connection, '@realDonaldTrump')
-        insert_tweets(connection, 'trump.csv')
+        create_tables(connection)                          # run once
+        insert_handle(connection, '@realDonaldTrump')      # run once
+        insert_tweets(connection, 'trump.csv')             # run once
         insert_query(connection)
 
 

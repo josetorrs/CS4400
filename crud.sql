@@ -1,16 +1,16 @@
 CREATE TABLE IF NOT EXISTS Handle (
-    HandleId TEXT NOT NULL PRIMARY KEY
+    HandleId INTEGER NOT NULL PRIMARY KEY,
+    Username TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS Tweet (
     TweetId INTEGER NOT NULL PRIMARY KEY,
     Post TEXT NOT NULL,
+    Sentiment REAL NOT NULL,
     Stamp DATETIME NOT NULL,
     NumFavorites INTEGER NOT NULL CHECK (NumFavorites >= 0),
     NumRetweets INTEGER NOT NULL CHECK (NumRetweets >= 0),
-    IsRetweet INTEGER NOT NULL CHECK (IsRetweet IN (0, 1)),
-    Source TEXT NOT NULL,
-    HandleId TEXT NOT NULL,
+    HandleId INTEGER NOT NULL,
     FOREIGN KEY (HandleId) REFERENCES Handle(HandleId)
 );
 
@@ -31,20 +31,19 @@ CREATE TABLE IF NOT EXISTS Sampled (
     FOREIGN KEY (TweetId) REFERENCES Tweet(TweetId)
 );
 
-INSERT INTO Handle(HandleId) VALUES(?);
+INSERT INTO Handle(HandleId, Username) VALUES(?, ?);
 
-INSERT INTO Tweet(TweetId, Post, Stamp, NumFavorites, NumRetweets, IsRetweet, Source, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO Tweet(TweetId, Post, Sentiment, Stamp, NumFavorites, NumRetweets, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?);
 
 INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?, ?, ?, ?, ?);
 
-SELECT TweetId, Post FROM Tweet, Query
-WHERE (QueryId = last_insert_rowid())
-AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
-AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
-AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
-AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
-AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL));
-
-SELECT last_insert_rowid();
-
-INSERT INTO Sampled(QueryId, TweetId) VALUES(?, ?);
+INSERT INTO Sampled(QueryId, TweetId) VALUES(
+    SELECT last_insert_rowid(), TweetId
+    FROM Tweet, Query
+    WHERE (QueryId = last_insert_rowid())
+    AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
+    AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
+    AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
+    AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
+    AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL))
+);

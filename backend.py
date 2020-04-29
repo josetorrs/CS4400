@@ -7,7 +7,7 @@ from sqlite3 import connect
 def get_tweets(query, begindate, enddate):
     
     lang = 'english'
-    limit = 1
+    limit = None
     filters = ['tweet_id', 'text', 'timestamp', 'likes', 'retweets', 'user_id', 'screen_name']
     tweets = None
     
@@ -24,43 +24,61 @@ def get_tweets(query, begindate, enddate):
     dataframe.dropna()
     return dataframe
 
+def insert_tweets(connection, tweets, query):
+    
+    cursor = connection.cursor()
+    analysis = Afinn()
+    
+    for index, tweet in tweets.iterrows():
+        
+        sql = "INSERT INTO Handle(HandleId, Username) VALUES(?, ?);"
+        values = (tweet['user_id'], tweet['screen_name'])
+        try:
+            cursor.execute(sql, values)
+        except:
+            pass
+        
+        sentiment = analysis.score(tweet['text'])
+        stamp = tweet['timestamp'].to_pydatetime()
+        
+        sql = "INSERT INTO Tweet(TweetId, Post, Sentiment, Stamp, NumFavorites, NumRetweets, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?);"
+        values = (tweet['tweet_id'], tweet['text'], sentiment, stamp, tweet['likes'], tweet['retweets'], tweet['user_id'])
+        try:
+            cursor.execute(sql, values)
+        except:
+            pass
+    
+    sql = "INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?, ?, ?, ?, ?);"
+    values = query
+    cursor.execute(sql, values)
+    
+    queryid = cursor.lastrowid
+    
+    sql = """   INSERT INTO Sampled(QueryId, TweetId)
+                    SELECT ?, TweetId FROM Tweet, Query WHERE (QueryId = ?)
+                    AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
+                    AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
+                    AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
+                    AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
+                    AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL));   """
+    values = (queryid, queryid)
+    cursor.execute(sql, values)
+    
+    return queryid
 
-def main(query='trump', begindate=None, enddate=None, minfavorites=0, minretweets=0):
+
+def analyze_tweets(connection, queryid):
     
-    tweets = get_tweets(query, begindate, enddate)
+    #cursor = connection.cursor()
+    return None
+
+
+def main(topic='Trump', begindate=None, enddate=None, minfavorites=None, minretweets=None):
     
+    tweets = get_tweets(topic, begindate, enddate)
     with connect('project.db') as connection:
-        cursor = connection.cursor()
-        analysis = Afinn()
-        
-        for index, tweet in tweets.iterrows():
-            
-            sql = "INSERT INTO Handle(HandleId, Username) VALUES(?, ?);"
-            values = (tweet['user_id'], tweet['screen_name'])
-            cursor.execute(sql, values)
-            
-            sentiment = analysis.score(tweet['text'])
-            
-            sql = "INSERT INTO Tweet(TweetId, Post, Sentiment, Stamp, NumFavorites, NumRetweets, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?);"
-            values = (tweet['tweet_id'], tweet['text'], sentiment, tweet['timestamp'], tweet['likes'], tweet['retweets'], tweet['user_id'])
-            cursor.execute(sql, values)
-        
-        sql = "INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?, ?, ?, ?, ?);"
-        values = (query, begindate, enddate, minfavorites, minretweets)
-        cursor.execute(sql, values)
-        
-        #query_id = cursor.lastrowid
-        
-        cursor.execute("""  INSERT INTO Sampled(QueryId, TweetId) VALUES(
-                                SELECT last_insert_rowid(), TweetId
-                                FROM Tweet, Query
-                                WHERE (QueryId = last_insert_rowid())
-                                AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
-                                AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
-                                AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
-                                AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
-                                AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL)));
-                       """)
+        queryid = insert_tweets(connection, tweets, (topic, begindate, enddate, minfavorites, minretweets))
+        analyze_tweets(connection, queryid)
 
 
 if __name__ == '__main__':

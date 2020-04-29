@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS Handle (
     HandleId INTEGER NOT NULL PRIMARY KEY,
-    Username TEXT NOT NULL
+    Username TEXT NOT NULL UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS Tweet (
@@ -37,13 +37,10 @@ INSERT INTO Tweet(TweetId, Post, Sentiment, Stamp, NumFavorites, NumRetweets, Ha
 
 INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?, ?, ?, ?, ?);
 
-INSERT INTO Sampled(QueryId, TweetId) VALUES(
-    SELECT last_insert_rowid(), TweetId
-    FROM Tweet, Query
-    WHERE (QueryId = last_insert_rowid())
+INSERT INTO Sampled(QueryId, TweetId)
+    SELECT ?, TweetId FROM Tweet, Query WHERE (QueryId = ?)
     AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
     AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
     AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
     AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
-    AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL))
-);
+    AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL));

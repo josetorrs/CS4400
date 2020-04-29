@@ -24,6 +24,7 @@ def get_tweets(query, begindate, enddate):
     dataframe.dropna()
     return dataframe
 
+
 def insert_tweets(connection, tweets, query):
     
     cursor = connection.cursor()
@@ -36,19 +37,19 @@ def insert_tweets(connection, tweets, query):
         try:
             cursor.execute(sql, values)
         except:
-            pass
+            pass # repeat entry
         
         sentiment = analysis.score(tweet['text'])
         stamp = tweet['timestamp'].to_pydatetime()
         
-        sql = "INSERT INTO Tweet(TweetId, Post, Sentiment, Stamp, NumFavorites, NumRetweets, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?);"
+        sql = "INSERT INTO Tweet(TweetId, Post, Sentiment, Stamp, NumLikes, NumRetweets, HandleId) VALUES(?, ?, ?, ?, ?, ?, ?);"
         values = (tweet['tweet_id'], tweet['text'], sentiment, stamp, tweet['likes'], tweet['retweets'], tweet['user_id'])
         try:
             cursor.execute(sql, values)
         except:
-            pass
+            pass # repeat entry
     
-    sql = "INSERT INTO Query(Topic, StartTime, EndTime, MinFavorites, MinRetweets) VALUES(?, ?, ?, ?, ?);"
+    sql = "INSERT INTO Query(Topic, StartTime, EndTime, MinLikes, MinRetweets) VALUES(?, ?, ?, ?, ?);"
     values = query
     cursor.execute(sql, values)
     
@@ -59,7 +60,7 @@ def insert_tweets(connection, tweets, query):
                     AND (LOWER(Post) LIKE ('%' || LOWER(Topic) || '%'))
                     AND ((Tweet.Stamp >= StartTime) OR (StartTime IS NULL))
                     AND ((Tweet.Stamp <= EndTime) OR (EndTime IS NULL))
-                    AND ((NumFavorites >= MinFavorites) OR (MinFavorites IS NULL))
+                    AND ((NumLikes >= MinLikes) OR (MinLikes IS NULL))
                     AND ((NumRetweets >= MinRetweets) OR (MinRetweets IS NULL));   """
     values = (queryid, queryid)
     cursor.execute(sql, values)
@@ -73,11 +74,11 @@ def analyze_tweets(connection, queryid):
     return None
 
 
-def main(topic='Trump', begindate=None, enddate=None, minfavorites=None, minretweets=None):
+def main(topic='Trump', begindate=None, enddate=None, minlikes=None, minretweets=None):
     
     tweets = get_tweets(topic, begindate, enddate)
     with connect('project.db') as connection:
-        queryid = insert_tweets(connection, tweets, (topic, begindate, enddate, minfavorites, minretweets))
+        queryid = insert_tweets(connection, tweets, (topic, begindate, enddate, minlikes, minretweets))
         analyze_tweets(connection, queryid)
 
 

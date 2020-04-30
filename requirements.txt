@@ -5,3 +5,4 @@ afinn
 pymongo
 motor
 azure-cosmos
+twitterscraper

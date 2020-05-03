@@ -25,6 +25,43 @@ def get_tweets(query, begindate, enddate):
     return dataframe
 
 
+def ensure_tables(connection):
+    
+    cursor = connection.cursor()
+    cursor.executescript("""CREATE TABLE IF NOT EXISTS Handle (
+                                HandleId INTEGER NOT NULL PRIMARY KEY,
+                                Username TEXT NOT NULL UNIQUE
+                            );
+                            
+                            CREATE TABLE IF NOT EXISTS Tweet (
+                                TweetId INTEGER NOT NULL PRIMARY KEY,
+                                Post TEXT NOT NULL,
+                                Sentiment REAL NOT NULL,
+                                Stamp DATETIME NOT NULL,
+                                NumLikes INTEGER NOT NULL CHECK (NumLikes >= 0),
+                                NumRetweets INTEGER NOT NULL CHECK (NumRetweets >= 0),
+                                HandleId INTEGER NOT NULL,
+                                FOREIGN KEY (HandleId) REFERENCES Handle(HandleId)
+                            );
+                            
+                            CREATE TABLE IF NOT EXISTS Query (
+                                QueryId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                                Stamp DATETIME NOT NULL DEFAULT (DATETIME('now', 'utc')),
+                                Topic TEXT NOT NULL,
+                                StartTime DATETIME,
+                                EndTime DATETIME,
+                                MinLikes INTEGER CHECK (MinLikes >= 0),
+                                MinRetweets INTEGER CHECK (MinRetweets >= 0)
+                            );
+                            
+                            CREATE TABLE IF NOT EXISTS Sampled (
+                                QueryId INTEGER,
+                                TweetId INTEGER,
+                                FOREIGN KEY (QueryId) REFERENCES Query(QueryId),
+                                FOREIGN KEY (TweetId) REFERENCES Tweet(TweetId)
+                            );""")
+
+
 def insert_tweets(connection, tweets, query):
     
     cursor = connection.cursor()
@@ -78,6 +115,7 @@ def main(topic='Trump', begindate=None, enddate=None, minlikes=None, minretweets
     
     tweets = get_tweets(topic, begindate, enddate)
     with connect('project.db') as connection:
+        ensure_tables(connection)
         queryid = insert_tweets(connection, tweets, (topic, begindate, enddate, minlikes, minretweets))
         analyze_tweets(connection, queryid)
 

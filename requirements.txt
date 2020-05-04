@@ -1,8 +1,6 @@
 family
-azure
 pandas
 afinn
-pymongo
 motor
-azure-cosmos
 twitterscraper
+tkcalender

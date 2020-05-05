@@ -1,4 +1,5 @@
 from afinn import Afinn
+from matplotlib.figure import Figure
 from pandas import DataFrame
 from sqlite3 import connect
 from twitterscraper.query import query_tweets
@@ -12,9 +13,9 @@ def backend(topic, begin_date, end_date, min_likes, min_retweets):
         if tweets is not None:
             insert_tweets(connection=connection, tweets=tweets)
             insert_sampled(connection=connection, query_id=query_id)
-            # return analyze_tweets(connection=connection, query_id=query_id)
+            return analyze_tweets(connection=connection, query_id=query_id)
         else:
-            return None  # TODO
+            return None
 
 
 def scrape_tweets(query, begin_date, end_date):
@@ -27,7 +28,7 @@ def scrape_tweets(query, begin_date, end_date):
         data_frame.dropna()
         return data_frame
     else:
-        return None  # TODO
+        return None
 
 
 def create_tables(connection):
@@ -115,6 +116,8 @@ def insert_sampled(connection, query_id):
 
 def analyze_tweets(connection, query_id):
     cursor = connection.cursor()
+    analysis = {}
+
     sql = ("SELECT COUNT(Sentiment), AVG(Sentiment), MIN(Sentiment), MAX(Sentiment)\n"
            "FROM Sampled AS S\n"
            "JOIN Query AS Q ON Q.QueryId = S.QueryId\n"
@@ -123,6 +126,60 @@ def analyze_tweets(connection, query_id):
            "GROUP BY Q.QueryId;")
     values = (query_id,)
     cursor.execute(sql, values)
-    cursor.fetchall()  # TODO
-    return None
+    result = cursor.fetchall()
+
+    analysis['sample size'] = result[0]
+    analysis['avg sentiment'] = result[1]
+    analysis['min sentiment'] = result[2]
+    analysis['max sentiment'] = result[3]
+
+    sql = ("SELECT Sentiment, COUNT(Sentiment)\n"
+           "FROM Sampled AS S\n"
+           "JOIN Query AS Q ON Q.QueryId = S.QueryId\n"
+           "JOIN Tweet AS T ON T.TweetId = S.TweetId\n"
+           "WHERE Q.QueryId = ?\n"
+           "GROUP BY Sentiment;")
+    values = (query_id,)
+    cursor.execute(sql, values)
+    result = cursor.fetchall()
+
+    figure0 = Figure(figsize=(4, 3), dpi=100)
+
+    # TODO
+
+    analysis['figure 0'] = figure0
+
+    sql = ("SELECT DATE(T.Stamp), AVG(Sentiment)\n"  # FIXME needs to grouped before graphed
+           "FROM Sampled AS S\n"
+           "JOIN Query AS Q ON Q.QueryId = S.QueryId\n"
+           "JOIN Tweet AS T ON T.TweetId = S.TweetId\n"
+           "WHERE Q.QueryId = ?\n"
+           "GROUP BY DATE(T.Stamp);")
+    values = (query_id,)
+    cursor.execute(sql, values)
+    result = cursor.fetchall()
+
+    figure1 = Figure(figsize=(4, 3), dpi=100)
+
+    # TODO
+
+    analysis['figure 1'] = figure1
+
+    sql = ("SELECT (NumLikes + NumRetweets) / 100, AVG(Sentiment)\n"  # FIXME adjust divisor to change the grouping
+           "FROM Sampled AS S\n"
+           "JOIN Query AS Q ON Q.QueryId = S.QueryId\n"
+           "JOIN Tweet AS T ON T.TweetId = S.TweetId\n"
+           "WHERE Q.QueryId = ?\n"
+           "GROUP BY (NumLikes + NumRetweets) / 100;")
+    values = (query_id,)
+    cursor.execute(sql, values)
+    result = cursor.fetchall()
+
+    figure2 = Figure(figsize=(4, 3), dpi=100)
+
+    # TODO
+
+    analysis['figure 2'] = figure2
+
+    return analysis
 

@@ -12,10 +12,8 @@ def backend(topic, begin_date, end_date, min_likes, min_retweets):
         query_id = insert_query(connection=connection, query=(topic, begin_date, end_date, min_likes, min_retweets))
         if tweets is not None:
             insert_tweets(connection=connection, tweets=tweets)
-            insert_sampled(connection=connection, query_id=query_id)
-            return analyze_tweets(connection=connection, query_id=query_id)
-        else:
-            return None
+        insert_sampled(connection=connection, query_id=query_id)
+        return analyze_tweets(connection=connection, query_id=query_id)
 
 
 def scrape_tweets(query, begin_date, end_date):
@@ -41,11 +39,11 @@ def create_tables(connection):
                          "    EndDate DATE NOT NULL,\n"
                          "    MinLikes INTEGER NOT NULL CHECK (MinLikes >= 0),\n"
                          "    MinRetweets INTEGER NOT NULL CHECK (MinRetweets >= 0)\n"
-                         ");"
+                         ");\n"
                          "CREATE TABLE IF NOT EXISTS Handle (\n"
                          "    HandleId INTEGER NOT NULL PRIMARY KEY,\n"
                          "    Username TEXT NOT NULL UNIQUE\n"
-                         ");"
+                         ");\n"
                          "CREATE TABLE IF NOT EXISTS Tweet (\n"
                          "    TweetId INTEGER NOT NULL PRIMARY KEY,\n"
                          "    Post TEXT NOT NULL,\n"
@@ -55,13 +53,13 @@ def create_tables(connection):
                          "    NumRetweets INTEGER NOT NULL CHECK (NumRetweets >= 0),\n"
                          "    HandleId INTEGER NOT NULL,\n"
                          "    FOREIGN KEY (HandleId) REFERENCES Handle(HandleId)\n"
-                         ");"
+                         ");\n"
                          "CREATE TABLE IF NOT EXISTS Sampled (\n"
                          "    QueryId INTEGER,\n"
                          "    TweetId INTEGER,\n"
                          "    FOREIGN KEY (QueryId) REFERENCES Query(QueryId),\n"
                          "    FOREIGN KEY (TweetId) REFERENCES Tweet(TweetId)\n"
-                         ");")
+                         ");\n")
 
 
 def insert_query(connection, query):
@@ -90,7 +88,7 @@ def insert_tweets(connection, tweets):
         stamp = tweet['timestamp'].to_pydatetime()
 
         sql = ("INSERT INTO Tweet(TweetId, Post, Sentiment, Stamp, NumLikes, NumRetweets, HandleId)\n"
-               "VALUES(?, ?, ?, ?, ?, ?, ?); ")
+               "VALUES(?, ?, ?, ?, ?, ?, ?);")
         values = (tweet['tweet_id'], tweet['text'], sentiment, stamp,
                   tweet['likes'], tweet['retweets'], tweet['user_id'])
         try:
@@ -126,7 +124,7 @@ def analyze_tweets(connection, query_id):
            "GROUP BY Q.QueryId;")
     values = (query_id,)
     cursor.execute(sql, values)
-    result = cursor.fetchall()
+    result = cursor.fetchone()
 
     analysis['sample size'] = result[0]
     analysis['avg sentiment'] = result[1]
@@ -145,39 +143,38 @@ def analyze_tweets(connection, query_id):
 
     figure0 = Figure(figsize=(4, 3), dpi=100)
 
-    # TODO
+    # TODO bar graph : sentiment distribution
 
     analysis['figure 0'] = figure0
 
-    sql = ("SELECT DATE(T.Stamp), AVG(Sentiment)\n"  # FIXME needs to grouped before graphed
+    sql = ("SELECT DATE(T.Stamp), AVG(Sentiment)\n"
            "FROM Sampled AS S\n"
            "JOIN Query AS Q ON Q.QueryId = S.QueryId\n"
            "JOIN Tweet AS T ON T.TweetId = S.TweetId\n"
            "WHERE Q.QueryId = ?\n"
-           "GROUP BY DATE(T.Stamp);")
+           "GROUP BY STRFTIME('%Y', T.Stamp), STRFTIME('%m', T.Stamp);")
     values = (query_id,)
     cursor.execute(sql, values)
     result = cursor.fetchall()
 
     figure1 = Figure(figsize=(4, 3), dpi=100)
 
-    # TODO
+    # TODO line graph : sentiment over time
 
     analysis['figure 1'] = figure1
 
-    sql = ("SELECT (NumLikes + NumRetweets) / 100, AVG(Sentiment)\n"  # FIXME adjust divisor to change the grouping
+    sql = ("SELECT (NumLikes + NumRetweets), Sentiment\n"
            "FROM Sampled AS S\n"
            "JOIN Query AS Q ON Q.QueryId = S.QueryId\n"
            "JOIN Tweet AS T ON T.TweetId = S.TweetId\n"
-           "WHERE Q.QueryId = ?\n"
-           "GROUP BY (NumLikes + NumRetweets) / 100;")
+           "WHERE Q.QueryId = ?;")
     values = (query_id,)
     cursor.execute(sql, values)
     result = cursor.fetchall()
 
     figure2 = Figure(figsize=(4, 3), dpi=100)
 
-    # TODO
+    # TODO scatter plot : sentiment vs popularity
 
     analysis['figure 2'] = figure2
 

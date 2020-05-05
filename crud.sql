@@ -77,12 +77,11 @@ FROM Sampled AS S
 JOIN Query AS Q ON Q.QueryId = S.QueryId
 JOIN Tweet AS T ON T.TweetId = S.TweetId
 WHERE Q.QueryId = ?
-GROUP BY DATE(T.Stamp);
+GROUP BY STRFTIME('%Y', T.Stamp), STRFTIME('%m', T.Stamp);
 
-SELECT (NumLikes + NumRetweets), AVG(Sentiment)
+SELECT (NumLikes + NumRetweets), Sentiment
 FROM Sampled AS S
 JOIN Query AS Q ON Q.QueryId = S.QueryId
 JOIN Tweet AS T ON T.TweetId = S.TweetId
-WHERE Q.QueryId = ?
-GROUP BY (NumLikes + NumRetweets);
+WHERE Q.QueryId = ?;
 

@@ -59,7 +59,7 @@ def create_tables(connection):
                          "    TweetId INTEGER,\n"
                          "    FOREIGN KEY (QueryId) REFERENCES Query(QueryId),\n"
                          "    FOREIGN KEY (TweetId) REFERENCES Tweet(TweetId)\n"
-                         ");\n")
+                         ");")
 
 
 def insert_query(connection, query):
@@ -127,7 +127,7 @@ def analyze_tweets(connection, query_id):
     result = cursor.fetchone()
 
     analysis['sample size'] = result[0]
-    analysis['avg sentiment'] = result[1]
+    analysis['avg sentiment'] = '{:.3f}'.format(result[1])
     analysis['min sentiment'] = result[2]
     analysis['max sentiment'] = result[3]
 

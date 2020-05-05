@@ -16,29 +16,34 @@ class Frontend:
         self.end_date = StringVar()
         self.min_likes = StringVar()
         self.min_retweets = StringVar()
+        self.sample_size = StringVar()
+        self.avg_sentiment = StringVar()
+        self.min_sentiment = StringVar()
+        self.max_sentiment = StringVar()
 
-        self.matrix = {}
+        layout = {}
         col0 = ('Search Topic', 'Begin Date', 'End Date', 'Minimum Likes', 'Minimum Retweets')
         col1 = (self.topic, self.begin_date, self.end_date, self.min_likes, self.min_retweets)
-        col2 = ('Sample Size', 'Avg Sentiment', 'Min Sentiment', 'Minimum Likes')
+        col2 = ('Sample Size', 'Avg Sentiment', 'Min Sentiment', 'Max Sentiment')
+        col3 = (self.sample_size, self.avg_sentiment, self.min_sentiment, self.max_sentiment)
 
         for i in range(5):
 
-            self.matrix[i, 0] = Label(root, text=col0[i])
+            layout[i, 0] = Label(root, text=col0[i])
 
             if i == 1:
-                self.matrix[i, 1] = DateEntry(root, textvariable=col1[i], date_pattern='mm-dd-yyyy',
-                                              mindate=datetime(2006, 3, 21), maxdate=datetime.today(),
-                                              year=2006, month=3, day=21)
+                layout[i, 1] = DateEntry(root, textvariable=col1[i], date_pattern='mm-dd-yyyy',
+                                         mindate=datetime(2006, 3, 21), maxdate=datetime.today(),
+                                         year=2006, month=3, day=21)
             elif i == 2:
-                self.matrix[i, 1] = DateEntry(root, textvariable=col1[i], date_pattern='mm-dd-yyyy',
-                                              mindate=datetime(2006, 3, 21), maxdate=datetime.today())
+                layout[i, 1] = DateEntry(root, textvariable=col1[i], date_pattern='mm-dd-yyyy',
+                                         mindate=datetime(2006, 3, 21), maxdate=datetime.today())
             else:
-                self.matrix[i, 1] = Entry(root, textvariable=col1[i])
+                layout[i, 1] = Entry(root, textvariable=col1[i])
 
             if i < 4:
-                self.matrix[i, 2] = Label(root, text=col2[i])
-                self.matrix[i, 3] = Label(root, text='__________')
+                layout[i, 2] = Label(root, text=col2[i])
+                layout[i, 3] = Label(root, textvariable=col3[i])
 
         pad_x = 10
         pad_y = 10
@@ -46,9 +51,9 @@ class Frontend:
         for i in range(5):
             for j in range(4):
                 if not (i == 4 and j > 1):
-                    self.matrix[i, j].grid(row=i, column=j, sticky=(W if j % 2 == 0 else E), padx=pad_x, pady=pad_y)
+                    layout[i, j].grid(row=i, column=j, sticky=(W if j % 2 == 0 else E), padx=pad_x, pady=pad_y)
 
-        self.matrix[4, 2] = self.matrix[4, 3] = Button(root, text='Send Query', command=self.send_query). \
+        layout[4, 2] = layout[4, 3] = Button(root, text='Send Query', command=self.send_query). \
             grid(row=4, column=2, columnspan=2, sticky=NSEW, padx=pad_x, pady=pad_y)
 
         self.placeholder = Figure(figsize=(4, 3), dpi=100)
@@ -81,17 +86,11 @@ class Frontend:
 
         analysis = backend(topic, begin_date, end_date, min_likes, min_retweets)
 
-        if analysis is None:
-            for i in range(4):
-                self.matrix[i, 3].text = '__________'
-                if i < 3:
-                    self.canvases[i].figure = self.placeholder
-                    self.canvases[i].draw()
-        else:
-            text = ('sample size', 'avg sentiment', 'min sentiment', 'max sentiment')
-            for i in range(4):
-                self.matrix[i, 3].text = analysis[text[i]]
-                if i < 3:
-                    self.canvases[i].figure = analysis[f'figure {i}']
-                    self.canvases[i].draw()
+        var = (self.sample_size, self.avg_sentiment, self.min_sentiment, self.max_sentiment)
+        text = ('sample size', 'avg sentiment', 'min sentiment', 'max sentiment')
+        for i in range(4):
+            var[i].set(analysis[text[i]])
+            if i < 3:
+                self.canvases[i].figure = analysis[f'figure {i}']
+                self.canvases[i].draw()
 

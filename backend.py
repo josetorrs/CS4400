@@ -6,7 +6,7 @@ from twitterscraper.query import query_tweets
 
 
 def backend(topic, begin_date, end_date, min_likes, min_retweets):
-    tweets = scrape_tweets(query=topic, begin_date=begin_date, end_date=end_date)
+    tweets = None  # scrape_tweets(query=topic, begin_date=begin_date, end_date=end_date)
     with connect('database.db') as connection:
         create_tables(connection=connection)
         query_id = insert_query(connection=connection, query=(topic, begin_date, end_date, min_likes, min_retweets))
@@ -127,7 +127,7 @@ def analyze_tweets(connection, query_id):
     result = cursor.fetchone()
 
     analysis['sample size'] = result[0]
-    analysis['avg sentiment'] = '{:.3f}'.format(result[1])
+    analysis['avg sentiment'] = f'{result[1]:.3f}'
     analysis['min sentiment'] = result[2]
     analysis['max sentiment'] = result[3]
 
@@ -141,10 +141,9 @@ def analyze_tweets(connection, query_id):
     cursor.execute(sql, values)
     result = cursor.fetchall()
 
-    figure0 = Figure(figsize=(4, 3), dpi=100)
-
-    # TODO bar graph : sentiment distribution
-
+    figure0 = Figure(figsize=(4, 3), dpi=100)  # TODO bar graph : sentiment distribution
+    subplot = figure0.add_subplot()
+    subplot.bar(*zip(*result))
     analysis['figure 0'] = figure0
 
     sql = ("SELECT DATE(T.Stamp), AVG(Sentiment)\n"
@@ -157,10 +156,9 @@ def analyze_tweets(connection, query_id):
     cursor.execute(sql, values)
     result = cursor.fetchall()
 
-    figure1 = Figure(figsize=(4, 3), dpi=100)
-
-    # TODO line graph : sentiment over time
-
+    figure1 = Figure(figsize=(4, 3), dpi=100)  # TODO line graph : sentiment over time
+    subplot = figure1.add_subplot()
+    subplot.plot(*zip(*result))
     analysis['figure 1'] = figure1
 
     sql = ("SELECT (NumLikes + NumRetweets), Sentiment\n"
@@ -172,10 +170,9 @@ def analyze_tweets(connection, query_id):
     cursor.execute(sql, values)
     result = cursor.fetchall()
 
-    figure2 = Figure(figsize=(4, 3), dpi=100)
-
-    # TODO scatter plot : sentiment vs popularity
-
+    figure2 = Figure(figsize=(4, 3), dpi=100)  # TODO scatter plot : sentiment vs popularity
+    subplot = figure2.add_subplot()
+    subplot.scatter(*zip(*result))
     analysis['figure 2'] = figure2
 
     return analysis

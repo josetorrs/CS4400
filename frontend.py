@@ -2,6 +2,7 @@ from backend import backend
 from datetime import datetime
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
+from matplotlib.pyplot import close
 from tkcalendar import DateEntry
 from tkinter import Button, Entry, Label, StringVar, NSEW, E, W
 
@@ -56,11 +57,11 @@ class Frontend:
         layout[4, 2] = layout[4, 3] = Button(root, text='Send Query', command=self.send_query). \
             grid(row=4, column=2, columnspan=2, sticky=NSEW, padx=pad_x, pady=pad_y)
 
-        self.placeholder = Figure(figsize=(4, 3), dpi=100)
+        placeholder = Figure(figsize=(4, 3), dpi=100)
 
-        self.canvases = {0: FigureCanvasTkAgg(figure=self.placeholder, master=root),
-                         1: FigureCanvasTkAgg(figure=self.placeholder, master=root),
-                         2: FigureCanvasTkAgg(figure=self.placeholder, master=root)}
+        self.canvases = {0: FigureCanvasTkAgg(figure=placeholder, master=root),
+                         1: FigureCanvasTkAgg(figure=placeholder, master=root),
+                         2: FigureCanvasTkAgg(figure=placeholder, master=root)}
         row = {0: 5, 1: 5, 2: 0}
         col = {0: 0, 1: 4, 2: 4}
 
@@ -88,9 +89,11 @@ class Frontend:
 
         var = (self.sample_size, self.avg_sentiment, self.min_sentiment, self.max_sentiment)
         text = ('sample size', 'avg sentiment', 'min sentiment', 'max sentiment')
+
         for i in range(4):
             var[i].set(analysis[text[i]])
             if i < 3:
+                close(self.canvases[i].figure)
                 self.canvases[i].figure = analysis[f'figure {i}']
                 self.canvases[i].draw()
 

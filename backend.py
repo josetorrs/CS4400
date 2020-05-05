@@ -1,15 +1,30 @@
-from afinn import Afinn
-from matplotlib.figure import Figure
-from pandas import DataFrame
+'''
+Behind the scenes work of querying a tweet
+and producing graphs relating to the sentiment analysis
+'''
 from sqlite3 import connect
+from afinn import Afinn
 from twitterscraper.query import query_tweets
+from pandas import DataFrame
+from matplotlib.figure import Figure
 
 
 def backend(topic, begin_date, end_date, min_likes, min_retweets):
+    '''
+    Create database tables if they don't exist, insert query entry and return an
+    analysis of corresponding tweets
+    :param topic: user inputed keyword
+    :param begin_date:
+    :param end_date:
+    :param min_likes: 0 if no user input
+    :param min_retweets: 0 if no user input
+    :return: graphs displaying sentiment analysis of tweets
+    '''
     tweets = None  # scrape_tweets(query=topic, begin_date=begin_date, end_date=end_date)
     with connect('database.db') as connection:
         create_tables(connection=connection)
-        query_id = insert_query(connection=connection, query=(topic, begin_date, end_date, min_likes, min_retweets))
+        query_id = insert_query(connection=connection,
+                                query=(topic, begin_date, end_date, min_likes, min_retweets))
         if tweets is not None:
             insert_tweets(connection=connection, tweets=tweets)
         insert_sampled(connection=connection, query_id=query_id)
@@ -17,6 +32,13 @@ def backend(topic, begin_date, end_date, min_likes, min_retweets):
 
 
 def scrape_tweets(query, begin_date, end_date):
+    '''
+
+    :param query: user input query
+    :param begin_date:
+    :param end_date:
+    :return: None if no matching keywords else pandas dataframe of tweets
+    '''
     limit = None
     lang = 'english'
     filters = ['tweet_id', 'text', 'timestamp', 'likes', 'retweets', 'user_id', 'screen_name']
@@ -25,11 +47,15 @@ def scrape_tweets(query, begin_date, end_date):
         data_frame = DataFrame(tweet.__dict__ for tweet in tweets)[filters]
         data_frame.dropna()
         return data_frame
-    else:
-        return None
+    return None
 
 
 def create_tables(connection):
+    '''
+    Creates database tables for schema
+    :param connection: database connection
+    :return: created database tables
+    '''
     cursor = connection.cursor()
     cursor.executescript("CREATE TABLE IF NOT EXISTS Query (\n"
                          "    QueryId INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,\n"
@@ -63,6 +89,12 @@ def create_tables(connection):
 
 
 def insert_query(connection, query):
+    '''
+    Inserts a query into the corresponding database table
+    :param connection: database connection
+    :param query: user query
+    :return: last row of the table
+    '''
     cursor = connection.cursor()
     sql = ("INSERT INTO Query(Topic, StartDate, EndDate, MinLikes, MinRetweets)\n"
            "VALUES(?, ?, ?, ?, ?);")
@@ -72,6 +104,12 @@ def insert_query(connection, query):
 
 
 def insert_tweets(connection, tweets):
+    '''
+    Inserts tweets into a database connection
+    :param connection: database connection
+    :param tweets: list of tweets
+    :return: None
+    '''
     cursor = connection.cursor()
     analysis = Afinn()
     for _, tweet in tweets.iterrows():
@@ -98,6 +136,12 @@ def insert_tweets(connection, tweets):
 
 
 def insert_sampled(connection, query_id):
+    '''
+    Inserts query and its info into the database connection
+    :param connection: database connection (sqlite3)
+    :param query_id:
+    :return: new data inserted into database
+    '''
     cursor = connection.cursor()
     sql = ("INSERT INTO Sampled(QueryId, TweetId)\n"
            "SELECT ?, TweetId\n"
@@ -113,6 +157,12 @@ def insert_sampled(connection, query_id):
 
 
 def analyze_tweets(connection, query_id):
+    '''
+    Analyze tweets based on sentiment then produces corresponding graphs
+    :param connection: database connection
+    :param query_id: tweet query
+    :return: list of sentiment graph
+    '''
     cursor = connection.cursor()
     analysis = {}
 
@@ -176,4 +226,3 @@ def analyze_tweets(connection, query_id):
     analysis['figure 2'] = figure2
 
     return analysis
-

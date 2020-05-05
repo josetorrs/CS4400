@@ -1,15 +1,20 @@
-from backend import backend
+''' Displays a tkinter frame to request user input on a tweet query. '''
 from datetime import datetime
+from tkinter import Button, Entry, Label, StringVar, NSEW, E, W
+from tkcalendar import DateEntry
+from backend import backend
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.pyplot import close
-from tkcalendar import DateEntry
-from tkinter import Button, Entry, Label, StringVar, NSEW, E, W
 
 
 class Frontend:
+    '''
+    Initializes tkinter frame
+    '''
 
     def __init__(self, root):
+
         root.title('Twitter Sentiment')
 
         self.topic = StringVar()
@@ -52,7 +57,8 @@ class Frontend:
         for i in range(5):
             for j in range(4):
                 if not (i == 4 and j > 1):
-                    layout[i, j].grid(row=i, column=j, sticky=(W if j % 2 == 0 else E), padx=pad_x, pady=pad_y)
+                    layout[i, j].grid(row=i, column=j,
+                                      sticky=(W if j % 2 == 0 else E), padx=pad_x, pady=pad_y)
 
         layout[4, 2] = layout[4, 3] = Button(root, text='Send Query', command=self.send_query). \
             grid(row=4, column=2, columnspan=2, sticky=NSEW, padx=pad_x, pady=pad_y)
@@ -66,11 +72,15 @@ class Frontend:
         col = {0: 0, 1: 4, 2: 4}
 
         for i in range(3):
-            self.canvases[i].get_tk_widget().grid(row=row[i], column=col[i], rowspan=5, columnspan=4,
-                                                  sticky=NSEW, padx=pad_x, pady=pad_y)
+            self.canvases[i].get_tk_widget().grid(row=row[i], column=col[i], rowspan=5,
+                                                  columnspan=4, sticky=NSEW, padx=pad_x, pady=pad_y)
             self.canvases[i].draw()
 
     def send_query(self):
+        '''
+        Sends the query to the backend
+        :return: None
+        '''
         topic = self.topic.get()
         begin_date = self.begin_date.get()
         end_date = self.end_date.get()
@@ -96,4 +106,3 @@ class Frontend:
                 close(self.canvases[i].figure)
                 self.canvases[i].figure = analysis[f'figure {i}']
                 self.canvases[i].draw()
-

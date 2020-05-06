@@ -1,20 +1,19 @@
-''' Displays a tkinter frame to request user input on a tweet query. '''
-from datetime import datetime
-from tkinter import Button, Entry, Label, StringVar, NSEW, E, W
-from tkcalendar import DateEntry
+""" Displays a tkinter frame to request user input on a tweet query. """
 from backend import backend
+from datetime import datetime
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.pyplot import close
+from tkcalendar import DateEntry
+from tkinter import BooleanVar, Button, Checkbutton, Entry, Label, StringVar, NSEW, E, W
 
 
 class Frontend:
-    '''
-    Initializes tkinter frame
-    '''
 
     def __init__(self, root):
-
+        """
+        Initializes tkinter frame
+        """
         root.title('Twitter Sentiment')
 
         self.topic = StringVar()
@@ -23,15 +22,16 @@ class Frontend:
         self.min_likes = StringVar()
         self.min_retweets = StringVar()
         self.sample_size = StringVar()
-        self.avg_sentiment = StringVar()
-        self.min_sentiment = StringVar()
-        self.max_sentiment = StringVar()
+        self.sentiment = StringVar()
+        self.positive = StringVar()
+        self.negative = StringVar()
+        self.scrape = BooleanVar()
 
         layout = {}
         col0 = ('Search Topic', 'Begin Date', 'End Date', 'Minimum Likes', 'Minimum Retweets')
         col1 = (self.topic, self.begin_date, self.end_date, self.min_likes, self.min_retweets)
-        col2 = ('Sample Size', 'Avg Sentiment', 'Min Sentiment', 'Max Sentiment')
-        col3 = (self.sample_size, self.avg_sentiment, self.min_sentiment, self.max_sentiment)
+        col2 = ('Sample Size', 'Sentiment', 'Positive', 'Negative', 'Scrape', 'Query')
+        col3 = (self.sample_size, self.sentiment, self.positive, self.negative, self.scrape)
 
         for i in range(5):
 
@@ -48,23 +48,22 @@ class Frontend:
                 layout[i, 1] = Entry(root, textvariable=col1[i])
 
             if i < 4:
+                col3[i].set('0' if i < 2 else '0%')
                 layout[i, 2] = Label(root, text=col2[i])
                 layout[i, 3] = Label(root, textvariable=col3[i])
+            else:
+                col3[i].set(False)
+                layout[i, 2] = Checkbutton(root, text=col2[i], variable=col3[i], onvalue=True, offvalue=False)
+                layout[i, 3] = Button(root, text=col2[i + 1], command=self.send_query)
 
         pad_x = 10
         pad_y = 10
 
         for i in range(5):
             for j in range(4):
-                if not (i == 4 and j > 1):
-                    layout[i, j].grid(row=i, column=j,
-                                      sticky=(W if j % 2 == 0 else E), padx=pad_x, pady=pad_y)
+                layout[i, j].grid(row=i, column=j, sticky=(W if j % 2 == 0 else E), padx=pad_x, pady=pad_y)
 
-        layout[4, 2] = layout[4, 3] = Button(root, text='Send Query', command=self.send_query). \
-            grid(row=4, column=2, columnspan=2, sticky=NSEW, padx=pad_x, pady=pad_y)
-
-        placeholder = Figure(figsize=(4, 3), dpi=100)
-
+        placeholder = Figure()
         self.canvases = {0: FigureCanvasTkAgg(figure=placeholder, master=root),
                          1: FigureCanvasTkAgg(figure=placeholder, master=root),
                          2: FigureCanvasTkAgg(figure=placeholder, master=root)}
@@ -72,15 +71,19 @@ class Frontend:
         col = {0: 0, 1: 4, 2: 4}
 
         for i in range(3):
-            self.canvases[i].get_tk_widget().grid(row=row[i], column=col[i], rowspan=5,
-                                                  columnspan=4, sticky=NSEW, padx=pad_x, pady=pad_y)
+            self.canvases[i].get_tk_widget().grid(row=row[i], column=col[i], rowspan=5, columnspan=4,
+                                                  sticky=NSEW, padx=pad_x, pady=pad_y)
             self.canvases[i].draw()
 
+        self.topic.set('covid')
+        self.send_query()
+
     def send_query(self):
-        '''
+        """
         Sends the query to the backend
         :return: None
-        '''
+        """
+        scrape = self.scrape.get()
         topic = self.topic.get()
         begin_date = self.begin_date.get()
         end_date = self.end_date.get()
@@ -95,14 +98,14 @@ class Frontend:
         min_likes = min_likes if min_likes > 0 else 0
         min_retweets = min_retweets if min_retweets > 0 else 0
 
-        analysis = backend(topic, begin_date, end_date, min_likes, min_retweets)
+        analysis = backend(scrape, topic, begin_date, end_date, min_likes, min_retweets)
 
-        var = (self.sample_size, self.avg_sentiment, self.min_sentiment, self.max_sentiment)
-        text = ('sample size', 'avg sentiment', 'min sentiment', 'max sentiment')
+        var = (self.sample_size, self.sentiment, self.positive, self.negative)
+        text = ('sample size', 'sentiment', 'positive', 'negative')
 
         for i in range(4):
             var[i].set(analysis[text[i]])
             if i < 3:
                 close(self.canvases[i].figure)
-                self.canvases[i].figure = analysis[f'figure {i}']
+                self.canvases[i].figure = analysis[f"figure {i}"]
                 self.canvases[i].draw()

@@ -58,12 +58,29 @@ AND NumRetweets >= MinRetweets;
 
 -- READ
 
-SELECT COUNT(Sentiment), AVG(Sentiment), MIN(Sentiment), MAX(Sentiment)
-FROM Sampled AS S
-JOIN Query AS Q ON Q.QueryId = S.QueryId
-JOIN Tweet AS T ON T.TweetId = S.TweetId
-WHERE Q.QueryId = ?
-GROUP BY Q.QueryId;
+SELECT SampleSize, AvgSentiment, NumPositive, NumNegative FROM
+    (SELECT COUNT(Sentiment) AS SampleSize, AVG(Sentiment) AS AvgSentiment
+    FROM Sampled AS S
+    JOIN Query AS Q ON Q.QueryId = S.QueryId
+    JOIN Tweet AS T ON T.TweetId = S.TweetId
+    WHERE Q.QueryId = ?
+    GROUP BY Q.QueryId)
+    ,
+    (SELECT COUNT(Sentiment) AS NumPositive
+    FROM Sampled AS S
+    JOIN Query AS Q ON Q.QueryId = S.QueryId
+    JOIN Tweet AS T ON T.TweetId = S.TweetId
+    WHERE Q.QueryId = ?
+    AND Sentiment > 0
+    GROUP BY Q.QueryId)
+    ,
+    (SELECT COUNT(Sentiment) AS NumNegative
+    FROM Sampled AS S
+    JOIN Query AS Q ON Q.QueryId = S.QueryId
+    JOIN Tweet AS T ON T.TweetId = S.TweetId
+    WHERE Q.QueryId = ?
+    AND Sentiment < 0
+    GROUP BY Q.QueryId);
 
 SELECT Sentiment, COUNT(Sentiment)
 FROM Sampled AS S
@@ -72,16 +89,15 @@ JOIN Tweet AS T ON T.TweetId = S.TweetId
 WHERE Q.QueryId = ?
 GROUP BY Sentiment;
 
-SELECT DATE(T.Stamp), AVG(Sentiment)
+SELECT STRFTIME('%Y', T.Stamp) AS Year, AVG(Sentiment)
 FROM Sampled AS S
 JOIN Query AS Q ON Q.QueryId = S.QueryId
 JOIN Tweet AS T ON T.TweetId = S.TweetId
 WHERE Q.QueryId = ?
-GROUP BY STRFTIME('%Y', T.Stamp), STRFTIME('%m', T.Stamp);
+GROUP BY Year;
 
 SELECT (NumLikes + NumRetweets), Sentiment
 FROM Sampled AS S
 JOIN Query AS Q ON Q.QueryId = S.QueryId
 JOIN Tweet AS T ON T.TweetId = S.TweetId
 WHERE Q.QueryId = ?;
-

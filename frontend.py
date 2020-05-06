@@ -5,7 +5,8 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 from matplotlib.pyplot import close
 from tkcalendar import DateEntry
-from tkinter import BooleanVar, Button, Checkbutton, Entry, Label, StringVar, NSEW, E, W
+from tkinter import BooleanVar, Button, Checkbutton, Entry, Label, StringVar, NSEW, E, W, NORMAL, DISABLED
+from threading import Thread
 
 
 class Frontend:
@@ -15,6 +16,12 @@ class Frontend:
         Initializes tkinter frame
         """
         root.title('Twitter Sentiment')
+
+        self.root = root
+
+        self.input = None
+        self.output = None
+        self.update = False
 
         self.topic = StringVar()
         self.begin_date = StringVar()
@@ -75,14 +82,26 @@ class Frontend:
                                                   sticky=NSEW, padx=pad_x, pady=pad_y)
             self.canvases[i].draw()
 
+        self.button = layout[4, 3]
         self.topic.set('covid')
         self.send_query()
+        self.check_query()
+
+    def thread_work(self):
+        """
+        Runs in the background
+        :return: None
+        """
+        self.output = backend(*self.input)
+        self.update = True
 
     def send_query(self):
         """
         Sends the query to the backend
         :return: None
         """
+        self.button.configure(state=DISABLED)
+
         scrape = self.scrape.get()
         topic = self.topic.get()
         begin_date = self.begin_date.get()
@@ -98,14 +117,30 @@ class Frontend:
         min_likes = min_likes if min_likes > 0 else 0
         min_retweets = min_retweets if min_retweets > 0 else 0
 
-        analysis = backend(scrape, topic, begin_date, end_date, min_likes, min_retweets)
+        self.input = (scrape, topic, begin_date, end_date, min_likes, min_retweets)
+        thread = Thread(target=self.thread_work)
+        thread.start()
+
+    def check_query(self):
+        if self.update is True:
+            self.update_query()
+        self.root.after(100, self.check_query)
+
+    def update_query(self):
+        """
+        Updates the ui from output
+        :return: None
+        """
+        self.update = False
 
         var = (self.sample_size, self.sentiment, self.positive, self.negative)
         text = ('sample size', 'sentiment', 'positive', 'negative')
 
         for i in range(4):
-            var[i].set(analysis[text[i]])
+            var[i].set(self.output[text[i]])
             if i < 3:
                 close(self.canvases[i].figure)
-                self.canvases[i].figure = analysis[f"figure {i}"]
+                self.canvases[i].figure = self.output[f"figure {i}"]
                 self.canvases[i].draw()
+
+        self.button.configure(state=NORMAL)

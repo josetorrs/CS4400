@@ -198,6 +198,16 @@ def analyze_tweets(connection, query_id):
     cursor.execute(sql, values)
     result = cursor.fetchone()
 
+    if result is None:
+        analysis['sample size'] = '0'
+        analysis['sentiment'] = '0'
+        analysis['positive'] = '0%'
+        analysis['negative'] = '0%'
+        analysis['figure 0'] = Figure()
+        analysis['figure 1'] = Figure()
+        analysis['figure 2'] = Figure()
+        return analysis
+
     analysis['sample size'] = result[0]
     analysis['sentiment'] = f'{result[1]:.3f}'
     analysis['positive'] = f"{(result[2] / result[0]):.3f}%"
